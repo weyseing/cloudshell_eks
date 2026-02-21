@@ -1,13 +1,15 @@
 # Use a lightweight linux base
-FROM alpine:3.18
+FROM debian:bookworm-slim
 
 # Install dependencies and AWS CLI
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     python3 \
-    py3-pip \
+    python3-pip \
     bash \
-    && pip install awscli aws-mfa
+    vim \
+    && pip3 install awscli aws-mfa --break-system-packages \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
