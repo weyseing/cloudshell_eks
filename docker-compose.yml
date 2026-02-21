@@ -1,0 +1,9 @@
+services:
+  cloudshell_eks:
+    build: .
+    container_name: cloudshell_eks
+    volumes:
+      - .:/apps
+      - ~/.aws:/root/.aws
+      - ~/.kube:/root/.kube
+    env_file: .env
