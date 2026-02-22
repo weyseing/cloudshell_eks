@@ -12,9 +12,6 @@ set -e
 #   --seconds  60
 #   --output   ./logs  (created if it doesn't exist)
 
-SECONDS_DEFAULT=60
-OUTPUT_DIR_DEFAULT="$(dirname "$0")/../logs"
-
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
@@ -33,8 +30,8 @@ if [[ -z "$DEPLOYMENT" && -z "$SERVICE" ]]; then
   exit 1
 fi
 
-DURATION="${DURATION:-$SECONDS_DEFAULT}"
-OUTPUT_DIR="${OUTPUT_DIR:-$OUTPUT_DIR_DEFAULT}"
+DURATION="${DURATION:-60}"
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$0")/../logs}"
 
 # aws assume role
 source "$(dirname "$0")/aws_assume_role.sh"

@@ -56,7 +56,7 @@ SELECTOR=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" \
   -o jsonpath='{.spec.selector.matchLabels}' | \
   python3 -c "
 import sys, json
-labels = json.loads(sys.stdin.read())
+labels = json.load(sys.stdin)
 print(','.join(f'{k}={v}' for k,v in labels.items()))
 ")
 kubectl get pods --namespace "$NAMESPACE" -l "$SELECTOR" \

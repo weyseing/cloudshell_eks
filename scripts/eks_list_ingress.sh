@@ -103,15 +103,12 @@ fi
 echo "=== Ingresses in namespace: $NAMESPACE ==="
 echo ""
 
-INGRESS_JSON=$(kubectl get ingresses --namespace "$NAMESPACE" -o json 2>/dev/null)
-COUNT=$(echo "$INGRESS_JSON" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('items',[])))")
-
-if [[ "$COUNT" -eq 0 ]]; then
+if ! kubectl get ingresses --namespace "$NAMESPACE" --no-headers 2>/dev/null | grep -q .; then
   echo "No ingresses found in namespace: $NAMESPACE"
   exit 0
 fi
 
-echo "$INGRESS_JSON" | python3 -c "
+kubectl get ingresses --namespace "$NAMESPACE" -o json | python3 -c "
 import sys, json
 
 data = json.load(sys.stdin)

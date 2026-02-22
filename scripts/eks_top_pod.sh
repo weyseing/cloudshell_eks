@@ -43,7 +43,7 @@ if [[ -n "$DEPLOYMENT" ]]; then
     -o jsonpath='{.spec.selector.matchLabels}' | \
     python3 -c "
 import sys, json
-labels = json.loads(sys.stdin.read())
+labels = json.load(sys.stdin)
 print(','.join(f'{k}={v}' for k,v in labels.items()))
 ")
   SELECTOR_FLAG="-l $SELECTOR"
