@@ -41,45 +41,33 @@ print_secret_refs() {
   echo ""
   echo "=== $LABEL ==="
 
-  # envFrom: secretRef
-  SECRET_NAMES=$(echo "$JSON" | \
-    python3 -c "
+  echo "$JSON" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 containers = (
     data.get('spec', {}).get('containers', []) +
     data.get('spec', {}).get('initContainers', [])
 )
+env_from, key_refs = [], []
 for c in containers:
     for ef in c.get('envFrom', []):
-        sr = ef.get('secretRef', {})
-        name = sr.get('name', '')
+        name = ef.get('secretRef', {}).get('name', '')
         if name:
-            print(f'  container={c[\"name\"]}  secretRef={name}')
-" 2>/dev/null || true)
-
-  # env[].valueFrom.secretKeyRef
-  KEY_REFS=$(echo "$JSON" | \
-    python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-containers = (
-    data.get('spec', {}).get('containers', []) +
-    data.get('spec', {}).get('initContainers', [])
-)
-for c in containers:
+            env_from.append(f'  container={c[\"name\"]}  secretRef={name}')
     for e in c.get('env', []):
         skr = e.get('valueFrom', {}).get('secretKeyRef', {})
         if skr:
-            print(f'  container={c[\"name\"]}  envVar={e[\"name\"]}  secret={skr[\"name\"]}  key={skr[\"key\"]}')
-" 2>/dev/null || true)
-
-  if [[ -z "$SECRET_NAMES" && -z "$KEY_REFS" ]]; then
-    echo "  (no secret env references found)"
-  else
-    [[ -n "$SECRET_NAMES" ]] && echo "  [envFrom / secretRef]" && echo "$SECRET_NAMES"
-    [[ -n "$KEY_REFS"     ]] && echo "  [env / secretKeyRef]"  && echo "$KEY_REFS"
-  fi
+            key_refs.append(f'  container={c[\"name\"]}  envVar={e[\"name\"]}  secret={skr[\"name\"]}  key={skr[\"key\"]}')
+if not env_from and not key_refs:
+    print('  (no secret env references found)')
+else:
+    if env_from:
+        print('  [envFrom / secretRef]')
+        print('\n'.join(env_from))
+    if key_refs:
+        print('  [env / secretKeyRef]')
+        print('\n'.join(key_refs))
+" 2>/dev/null || true
 }
 
 # ── deployment path ───────────────────────────────────────────────────────────

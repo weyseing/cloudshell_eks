@@ -33,29 +33,6 @@ if [[ ! -f "$TEMP_FILE" ]]; then
 fi
 NAMESPACE=$(cat "$TEMP_FILE")
 
-# ── helper: collect secret names referenced by a container spec JSON ─────────
-collect_secret_names_from_json() {
-  local JSON="$1"
-  python3 -c "
-import sys, json
-data = json.loads('''$JSON''')
-names = set()
-containers = (
-    data.get('spec', {}).get('containers', []) +
-    data.get('spec', {}).get('initContainers', [])
-)
-for c in containers:
-    for ef in c.get('envFrom', []):
-        n = ef.get('secretRef', {}).get('name', '')
-        if n: names.add(n)
-    for e in c.get('env', []):
-        n = e.get('valueFrom', {}).get('secretKeyRef', {}).get('name', '')
-        if n: names.add(n)
-for n in sorted(names):
-    print(n)
-" 2>/dev/null || true
-}
-
 # ── helper: print decoded key/value pairs for a secret ───────────────────────
 print_secret_kv() {
   local SECRET_NAME="$1"
@@ -81,9 +58,20 @@ else:
 # ── scoped to deployment ──────────────────────────────────────────────────────
 if [[ -n "$DEPLOYMENT" ]]; then
   echo "Listing secrets referenced by deployment: $DEPLOYMENT (namespace: $NAMESPACE)"
-  CONTAINER_JSON=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" -o json | \
-    python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d['spec']['template']))")
-  SECRET_NAMES=$(collect_secret_names_from_json "$CONTAINER_JSON")
+  SECRET_NAMES=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" -o json | \
+    python3 -c "
+import sys, json
+spec = json.load(sys.stdin)['spec']['template']['spec']
+names = set()
+for c in spec.get('containers', []) + spec.get('initContainers', []):
+    for ef in c.get('envFrom', []):
+        n = ef.get('secretRef', {}).get('name', '')
+        if n: names.add(n)
+    for e in c.get('env', []):
+        n = e.get('valueFrom', {}).get('secretKeyRef', {}).get('name', '')
+        if n: names.add(n)
+for n in sorted(names): print(n)
+")
   if [[ -z "$SECRET_NAMES" ]]; then
     echo "No secrets referenced by this deployment."
     exit 0
@@ -97,9 +85,20 @@ fi
 # ── scoped to pod ─────────────────────────────────────────────────────────────
 if [[ -n "$POD" ]]; then
   echo "Listing secrets referenced by pod: $POD (namespace: $NAMESPACE)"
-  POD_JSON=$(kubectl get pod "$POD" --namespace "$NAMESPACE" -o json | \
-    python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)))")
-  SECRET_NAMES=$(collect_secret_names_from_json "$POD_JSON")
+  SECRET_NAMES=$(kubectl get pod "$POD" --namespace "$NAMESPACE" -o json | \
+    python3 -c "
+import sys, json
+spec = json.load(sys.stdin)['spec']
+names = set()
+for c in spec.get('containers', []) + spec.get('initContainers', []):
+    for ef in c.get('envFrom', []):
+        n = ef.get('secretRef', {}).get('name', '')
+        if n: names.add(n)
+    for e in c.get('env', []):
+        n = e.get('valueFrom', {}).get('secretKeyRef', {}).get('name', '')
+        if n: names.add(n)
+for n in sorted(names): print(n)
+")
   if [[ -z "$SECRET_NAMES" ]]; then
     echo "No secrets referenced by this pod."
     exit 0

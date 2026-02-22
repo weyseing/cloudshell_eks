@@ -9,9 +9,7 @@ set -e
 #   By deployment:  ./eks_exec_pod.sh --deployment <name> [--container <name>] [--cmd <cmd>]
 #
 # Defaults:
-#   --cmd   /bin/sh   (falls back to /bin/bash if sh not found)
-
-CMD_DEFAULT="/bin/sh"
+#   --cmd   /bin/sh
 
 # get args
 while [[ "$#" -gt 0 ]]; do
@@ -31,7 +29,7 @@ if [[ -z "$POD" && -z "$DEPLOYMENT" ]]; then
   exit 1
 fi
 
-CMD="${CMD:-$CMD_DEFAULT}"
+CMD="${CMD:-/bin/sh}"
 
 # aws assume role
 source "$(dirname "$0")/aws_assume_role.sh"
