@@ -39,7 +39,7 @@ print_secret_refs() {
   local LABEL="$2"
 
   echo ""
-  echo "=== $LABEL ==="
+  echo -e "\e[36m=== $LABEL ===\e[0m"
 
   echo "$JSON" | python3 -c "
 import sys, json
@@ -53,11 +53,11 @@ for c in containers:
     for ef in c.get('envFrom', []):
         name = ef.get('secretRef', {}).get('name', '')
         if name:
-            env_from.append(f'  container={c[\"name\"]}  secretRef={name}')
+            env_from.append(f'  container={c[\"name\"]}  secretRef=\033[32m{name}\033[0m')
     for e in c.get('env', []):
         skr = e.get('valueFrom', {}).get('secretKeyRef', {})
         if skr:
-            key_refs.append(f'  container={c[\"name\"]}  envVar={e[\"name\"]}  secret={skr[\"name\"]}  key={skr[\"key\"]}')
+            key_refs.append(f'  container={c[\"name\"]}  envVar={e[\"name\"]}  secret=\033[32m{skr[\"name\"]}\033[0m  key=\033[32m{skr[\"key\"]}\033[0m')
 if not env_from and not key_refs:
     print('  (no secret env references found)')
 else:
