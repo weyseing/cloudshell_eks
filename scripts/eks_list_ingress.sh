@@ -115,7 +115,7 @@ data = json.load(sys.stdin)
 items = data.get('items', [])
 
 # header
-print(f'{'NAME':<30} {'CLASS':<20} {'HOSTS':<40} {'ADDRESS':<50} {'PORTS':<10}')
+print('{:<30} {:<20} {:<40} {:<50} {:<10}'.format('NAME', 'CLASS', 'HOSTS', 'ADDRESS', 'PORTS'))
 print('-' * 155)
 
 for d in items:
