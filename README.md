@@ -12,5 +12,9 @@ aws_secret_access_key = ********
 # AWS Config
 AWS_ACCOUNT_ID=     # AWS acc ID
 AWS_ROLE_NAME=      # AWS IAM role
-AWS_MFA_DEVICE=      # AWS MFA device
+AWS_MFA_DEVICE=     # AWS MFA device
+
+# GitHub Config
+GH_TOKEN=           # GitHub personal access token (repo scope)
+                    # Create at: GitHub → Settings → Developer settings → Personal access tokens
 ```
