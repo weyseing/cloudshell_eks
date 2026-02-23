@@ -6,4 +6,5 @@ services:
       - .:/apps
       - ~/.aws:/root/.aws
       - ~/.kube:/root/.kube
+      - ~/.claude:/root/.claude
     env_file: .env

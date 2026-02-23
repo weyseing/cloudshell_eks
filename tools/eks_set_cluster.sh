@@ -4,6 +4,7 @@ set -e
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 --cluster <cluster-name>"; exit 0 ;;
     --cluster) CLUSTER_NAME="$2"; shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;
   esac

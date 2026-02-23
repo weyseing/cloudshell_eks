@@ -10,4 +10,4 @@ Custom Docker environment mimicking AWS CloudShell for managing AWS EKS clusters
 
 ## Instructions
 - Always use Docker container for EKS commands
-- Check `scripts/` directory first for existing shell, EKS, GitHub commands
+- Check `tools/` directory first for existing shell, EKS, GitHub commands

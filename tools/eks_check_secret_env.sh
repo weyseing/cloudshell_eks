@@ -9,6 +9,7 @@ set -e
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 --deployment <name>"; echo "       $0 --pod <name>"; exit 0 ;;
     --deployment) DEPLOYMENT="$2"; shift ;;
     --pod)        POD="$2";        shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;

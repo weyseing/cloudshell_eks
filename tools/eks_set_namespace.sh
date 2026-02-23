@@ -4,6 +4,7 @@ set -e
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 [--namespace <name>]"; exit 0 ;;
     --namespace) NAMESPACE="$2"; shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;
   esac

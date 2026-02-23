@@ -12,6 +12,7 @@ set -e
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 --pod <name> [--container <name>] [--cmd <cmd>]"; exit 0 ;;
     --pod)       POD="$2";       shift ;;
     --container) CONTAINER="$2"; shift ;;
     --cmd)       CMD="$2";       shift ;;

@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-# List all Kubernetes Secrets (names + keys) in the namespace,
-# or scope to those referenced by a specific deployment or pod.
+# List Kubernetes Secrets (names + keys) by secret name or pod.
 # Usage:
-#   All secrets in namespace:   ./eks_list_secret_env.sh
-#   Scoped to deployment:       ./eks_list_secret_env.sh --deployment <name>
-#   Scoped to pod:              ./eks_list_secret_env.sh --pod <name>
+#   Scoped to secret name:          ./eks_list_secret_env.sh --secret <name>
+#   Scoped to pod:                  ./eks_list_secret_env.sh --pod <name>
 #
 # Note: Secret *values* are base64-encoded in etcd. This script decodes and
 #       prints them so you can audit what is actually injected. Run only in
@@ -15,8 +13,9 @@ set -e
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
-    --deployment) DEPLOYMENT="$2"; shift ;;
-    --pod)        POD="$2";        shift ;;
+    --help) echo "Usage: $0 [--secret <name>] [--pod <name>]"; exit 0 ;;
+    --secret) SECRET="$2"; shift ;;
+    --pod)    POD="$2";    shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;
   esac
   shift
@@ -55,30 +54,10 @@ else:
 "
 }
 
-# ── scoped to deployment ──────────────────────────────────────────────────────
-if [[ -n "$DEPLOYMENT" ]]; then
-  echo "Listing secrets referenced by deployment: $DEPLOYMENT (namespace: $NAMESPACE)"
-  SECRET_NAMES=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" -o json | \
-    python3 -c "
-import sys, json
-spec = json.load(sys.stdin)['spec']['template']['spec']
-names = set()
-for c in spec.get('containers', []) + spec.get('initContainers', []):
-    for ef in c.get('envFrom', []):
-        n = ef.get('secretRef', {}).get('name', '')
-        if n: names.add(n)
-    for e in c.get('env', []):
-        n = e.get('valueFrom', {}).get('secretKeyRef', {}).get('name', '')
-        if n: names.add(n)
-for n in sorted(names): print(n)
-")
-  if [[ -z "$SECRET_NAMES" ]]; then
-    echo "No secrets referenced by this deployment."
-    exit 0
-  fi
-  for NAME in $SECRET_NAMES; do
-    print_secret_kv "$NAME"
-  done
+# ── scoped to secret name ─────────────────────────────────────────────────────
+if [[ -n "$SECRET" ]]; then
+  echo "Listing secret: $SECRET (namespace: $NAMESPACE)"
+  print_secret_kv "$SECRET"
   exit 0
 fi
 
@@ -109,13 +88,6 @@ for n in sorted(names): print(n)
   exit 0
 fi
 
-# ── all secrets in namespace ──────────────────────────────────────────────────
-echo "Listing all secrets in namespace: $NAMESPACE"
-ALL_SECRETS=$(kubectl get secrets --namespace "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
-if [[ -z "$ALL_SECRETS" ]]; then
-  echo "No secrets found in namespace: $NAMESPACE"
-  exit 0
-fi
-for NAME in $ALL_SECRETS; do
-  print_secret_kv "$NAME"
-done
+# ── error: must specify either --pod or --secret ────────────────────────────
+echo "Error: must specify either --pod <pod_name> or --secret <secret_name>"
+exit 1

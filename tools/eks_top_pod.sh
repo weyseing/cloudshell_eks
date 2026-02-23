@@ -17,6 +17,7 @@ WATCH=false
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 [--deployment <name>] [--sort cpu|memory] [--watch]"; exit 0 ;;
     --deployment) DEPLOYMENT="$2"; shift ;;
     --sort)       SORT_BY="$2";    shift ;;
     --watch)      WATCH=true ;;

@@ -1,37 +1,33 @@
 #!/bin/bash
 set -e
 
-# Tail logs from ALL pods belonging to a deployment/service for N seconds
-# and save the output to a timestamped local log file.
+# Tail logs from ALL pods belonging to a deployment
+# and save the output to temp/logs/<deployment-name>_YYYYMMDD_hhmmss.log
 #
 # Usage:
-#   ./eks_tail_logs.sh --deployment <name> [--seconds <N>] [--output <dir>]
-#   ./eks_tail_logs.sh --service <name>    [--seconds <N>] [--output <dir>]
+#   ./eks_tail_logs.sh --deployment <name> [--timeout 5m]
 #
-# Defaults:
-#   --seconds  60
-#   --output   ./logs  (created if it doesn't exist)
+# Options:
+#   --timeout   Stop tailing after specified duration (default: 20s, e.g., 5m, 60s, 2h)
 
 # get args
 while [[ "$#" -gt 0 ]]; do
   case $1 in
+    --help) echo "Usage: $0 --deployment <name> [--timeout 5m]"; echo "Options:"; echo "  --timeout   Stop tailing after specified duration (default: 20s)"; exit 0 ;;
     --deployment) DEPLOYMENT="$2"; shift ;;
-    --service)    SERVICE="$2";    shift ;;
-    --seconds)    DURATION="$2";   shift ;;
-    --output)     OUTPUT_DIR="$2"; shift ;;
+    --timeout)    TIMEOUT="$2";    shift ;;
     *) echo "Unknown parameter: $1"; exit 1 ;;
   esac
   shift
 done
 
-if [[ -z "$DEPLOYMENT" && -z "$SERVICE" ]]; then
-  echo "Usage: $0 --deployment <name> [--seconds <N>] [--output <dir>]"
-  echo "       $0 --service    <name> [--seconds <N>] [--output <dir>]"
+if [[ -z "$DEPLOYMENT" ]]; then
+  echo "Usage: $0 --deployment <name> [--timeout 5m]"
   exit 1
 fi
 
-DURATION="${DURATION:-60}"
-OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$0")/../logs}"
+TIMEOUT="${TIMEOUT:-20s}"
+OUTPUT_DIR="$(dirname "$0")/../temp/logs"
 
 # aws assume role
 source "$(dirname "$0")/aws_assume_role.sh"
@@ -44,26 +40,19 @@ if [[ ! -f "$TEMP_FILE" ]]; then
 fi
 NAMESPACE=$(cat "$TEMP_FILE")
 
-# resolve pod label selector
-if [[ -n "$DEPLOYMENT" ]]; then
-  TARGET_NAME="$DEPLOYMENT"
-  SELECTOR=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" \
-    -o jsonpath='{.spec.selector.matchLabels}' | \
-    python3 -c "
+# set namespace temporarily, cleanup on exit
+kubectl config set-context --current --namespace="$NAMESPACE" > /dev/null 2>&1
+trap "kubectl config set-context --current --namespace='' > /dev/null 2>&1" EXIT
+
+# resolve pod label selector from deployment
+TARGET_NAME="$DEPLOYMENT"
+SELECTOR=$(kubectl get deployment "$DEPLOYMENT" --namespace "$NAMESPACE" \
+  -o jsonpath='{.spec.selector.matchLabels}' | \
+  python3 -c "
 import sys, json
 labels = json.loads(sys.stdin.read())
 print(','.join(f'{k}={v}' for k,v in labels.items()))
 ")
-elif [[ -n "$SERVICE" ]]; then
-  TARGET_NAME="$SERVICE"
-  SELECTOR=$(kubectl get service "$SERVICE" --namespace "$NAMESPACE" \
-    -o jsonpath='{.spec.selector}' | \
-    python3 -c "
-import sys, json
-labels = json.loads(sys.stdin.read())
-print(','.join(f'{k}={v}' for k,v in labels.items()))
-")
-fi
 
 if [[ -z "$SELECTOR" ]]; then
   echo "Error: could not determine pod selector for $TARGET_NAME."
@@ -86,7 +75,7 @@ LOG_FILE="${OUTPUT_DIR}/${TARGET_NAME}_${TIMESTAMP}.log"
 
 echo "Tailing logs for: $TARGET_NAME (namespace: $NAMESPACE)"
 echo "Pods  : $PODS"
-echo "Duration: ${DURATION}s"
+echo "Timeout : $TIMEOUT"
 echo "Output  : $LOG_FILE"
 echo ""
 
@@ -97,30 +86,27 @@ echo ""
   echo "# Namespace : $NAMESPACE"
   echo "# Selector  : $SELECTOR"
   echo "# Pods      : $PODS"
-  echo "# Duration  : ${DURATION}s"
+  echo "# Timeout   : $TIMEOUT"
   echo "# Started   : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo "# ─────────────────────────────────────────────"
 } >> "$LOG_FILE"
 
-# start kubectl logs --follow for each pod in background, prefix each line
-BG_PIDS=()
-for POD in $PODS; do
-  kubectl logs --follow --timestamps \
-    --namespace "$NAMESPACE" "$POD" 2>&1 | \
-    awk -v pod="$POD" '{ print "[" pod "] " $0; fflush() }' \
-    >> "$LOG_FILE" &
-  BG_PIDS+=($!)
-done
-
 echo "Collecting logs... (press Ctrl+C to stop early)"
 
-# run for DURATION seconds then kill background jobs
-sleep "$DURATION"
+# export variables for subshell
+export NAMESPACE PODS LOG_FILE
 
-for PID in "${BG_PIDS[@]}"; do
-  kill "$PID" 2>/dev/null || true
-done
-wait 2>/dev/null || true
+# run_tail function with timeout
+run_tail() {
+  for POD in $PODS; do
+    kubectl logs -f --timestamps --namespace "$NAMESPACE" "$POD" 2>&1 | \
+      awk -v pod="$POD" '{ print "[" pod "] " $0 }' | tee -a "$LOG_FILE" &
+  done
+  wait
+}
+
+# Run with timeout
+timeout "$TIMEOUT" bash -c "$(declare -f run_tail); run_tail" || true
 
 # write footer
 {
