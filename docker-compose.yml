@@ -1,6 +1,7 @@
 services:
   cloudshell_eks:
     build: .
+    image: cloudshell_eks:latest
     container_name: cloudshell_eks
     volumes:
       - .:/apps

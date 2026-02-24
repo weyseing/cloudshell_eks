@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     git \
     jq \
+    postgresql-client \
     && pip3 install awscli aws-mfa --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
@@ -24,6 +25,12 @@ ENV PATH="/root/.local/bin:${PATH}"
 
 # Set the working directory for your scripts
 WORKDIR /apps
+
+# Set bash prompt style
+ENV PS1="\[\033[01;32m\]\u@\h:\[\033[01;34m\]\w\[\033[00m\]\$"
+
+# Add PS1 to bashrc
+RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[01;34m\]\w\[\033[00m\]\$"' >> ~/.bashrc
 
 # Default command to keep the container open
 CMD ["tail", "-f", "/dev/null"]
