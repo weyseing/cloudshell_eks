@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     bash \
     vim \
+    git \
     && pip3 install awscli aws-mfa --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
