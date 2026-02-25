@@ -7,6 +7,7 @@
 #   --category CATEGORY Category for templates (slides, poster, build, auto)
 #   --file FILE_PATH    Path to CSV/XLSX file
 #   --sheet-name SHEET  Excel sheet name (xlsx only)
+#   --language LANG     Language code (en, bm, etc.) - Default: en
 #   --delete            Delete existing templates in the same category before populating
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,12 +22,14 @@ Options:
                       Default: slides
   --file FILE_PATH    Path to CSV/XLSX file to populate templates from
   --sheet-name SHEET  Excel sheet name to use (xlsx only)
+  --language LANG     Language code (en, bm, etc.)
+                      Default: en
   --delete            Delete existing templates in the same category before populating
 
 Examples:
   $(basename "$0") --file data.xlsx
-  $(basename "$0") --category poster --file templates.csv
-  $(basename "$0") --delete --file data.xlsx
+  $(basename "$0") --language bm --category poster --file templates.csv
+  $(basename "$0") --language en --delete --file data.xlsx
   $(basename "$0") --help
 EOF
 }
@@ -35,6 +38,7 @@ EOF
 CATEGORY="slides"
 FILE_PATH=""
 SHEET_NAME=""
+LANGUAGE="en"
 DELETE_FIRST=false
 
 # Parse arguments
@@ -54,6 +58,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --sheet-name)
       SHEET_NAME="$2"
+      shift 2
+      ;;
+    --language)
+      LANGUAGE="$2"
       shift 2
       ;;
     --delete)
@@ -103,12 +111,13 @@ fi
 
 echo "📤 Populating templates..."
 echo "Category: $CATEGORY"
+echo "Language: $LANGUAGE"
 echo "File: $FILE_PATH"
 [ -n "$SHEET_NAME" ] && echo "Sheet: $SHEET_NAME"
 echo "---"
 
 # Step 1: Submit the file
-QUERY_URL="$ENDPOINT?category=$CATEGORY&is_published=true"
+QUERY_URL="$ENDPOINT?category=$CATEGORY&language=$LANGUAGE&is_published=true"
 if [ -n "$SHEET_NAME" ]; then
   SHEET_ENCODED=$(urlencode "$SHEET_NAME")
   QUERY_URL="$QUERY_URL&sheet_name=$SHEET_ENCODED"
