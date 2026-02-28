@@ -7,7 +7,7 @@ source "$(dirname "$0")/github_utils.sh"
 # Splits by: environment + type (secrets/variables)
 
 REPO=""
-OUTPUT_DIR="/apps/temp/github/env"
+OUTPUT_DIR="/apps/cloudshell/temp/github/env"
 
 usage() {
   cat << EOF
@@ -17,7 +17,7 @@ Export GitHub repository secrets and environment variables to separate files.
 
 OPTIONS:
   --repo OWNER/REPO      GitHub repository (required)
-  --output DIR           Output directory (default: /apps/temp/github/env)
+  --output DIR           Output directory (default: /apps/cloudshell/temp/github/env)
   --help                 Show this help message
 
 EXAMPLES:

@@ -23,7 +23,7 @@ OPTIONS:
   --help                 Show this help message
 
 EXAMPLES:
-  $0 --repo frogasia/agent-service --file /apps/temp/github/env/frogasia_agent-service_PROD_secrets.txt
+  $0 --repo frogasia/agent-service --file /apps/cloudshell/temp/github/env/frogasia_agent-service_PROD_secrets.txt
   $0 --repo frogasia/agent-service --file secrets.txt --env PROD
 
 File format: KEY=VALUE pairs (headers and empty lines skipped)
