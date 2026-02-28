@@ -25,5 +25,8 @@ ENV PATH="/root/.local/bin:${PATH}"
 # Set the working directory for your scripts
 WORKDIR /apps
 
+# Set terminal color prompt
+RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[01;34m\]\w\[\033[00m\]\$"' >> /root/.bashrc
+
 # Default command to keep the container open
 CMD ["tail", "-f", "/dev/null"]
