@@ -4,20 +4,12 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Load RDS environment variables
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
-else
-    echo "Error: .env file not found in $SCRIPT_DIR"
-    exit 1
-fi
-
-# Default values
+# Default values (RDS env vars from Docker container)
 ENV=""
 MODE="tty"
 COMMAND=""
+MODE_SPECIFIED=0
+CUSTOM_DB=""
 
 # Show help
 show_help() {
@@ -34,7 +26,8 @@ Mode Arguments (choose one):
   --exec                         Execution mode (execute command only, exit after)
 
 Optional Arguments:
-  --command <sql>                SQL command to execute (required with --exec)
+  --db <database>                Specific database to connect to
+  --cmd <sql>                SQL command to execute (required with --exec)
   --help                         Show this help message
 
 Examples:
@@ -42,7 +35,7 @@ Examples:
   $0 --env dev --tty
 
   # Execution mode: execute query and exit
-  $0 --env dev --exec --command "SELECT version();"
+  $0 --env dev --exec --cmd "SELECT version();"
 
   # Non-interactive: run SQL file
   psql \$(DB_CONNECTION_STRING) < script.sql
@@ -57,14 +50,28 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --tty)
+            if [ "$MODE_SPECIFIED" -eq 1 ]; then
+                echo "Error: Cannot use both --tty and --exec"
+                exit 1
+            fi
             MODE="tty"
+            MODE_SPECIFIED=1
             shift
             ;;
         --exec)
+            if [ "$MODE_SPECIFIED" -eq 1 ]; then
+                echo "Error: Cannot use both --tty and --exec"
+                exit 1
+            fi
             MODE="exec"
+            MODE_SPECIFIED=1
             shift
             ;;
-        --command)
+        --db)
+            CUSTOM_DB="$2"
+            shift 2
+            ;;
+        --cmd)
             COMMAND="$2"
             shift 2
             ;;
@@ -127,6 +134,8 @@ fi
 
 # Build RDS connection string
 export PGPASSWORD="$PASS"
+# Use custom database if provided, otherwise use default
+DB=${CUSTOM_DB:-$DB}
 CONN_STRING="host=$HOST port=$PORT dbname=$DB user=$USER"
 
 # Execute based on mode
@@ -135,7 +144,7 @@ if [ "$MODE" = "tty" ]; then
     psql "$CONN_STRING"
 else
     if [ -z "$COMMAND" ]; then
-        echo "Error: --command is required when using --exec"
+        echo "Error: --cmd is required when using --exec"
         exit 1
     fi
     psql "$CONN_STRING" -c "$COMMAND"

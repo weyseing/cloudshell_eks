@@ -1,43 +1,35 @@
 #!/bin/bash
-# RDS List All Schemas and Tables Script
+# RDS List All Tables Script
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Load RDS environment variables
-if [ -f "$SCRIPT_DIR/.env" ]; then
-    source "$SCRIPT_DIR/.env"
-else
-    echo "Error: .env file not found in $SCRIPT_DIR"
-    exit 1
-fi
-
-# Default values
+# Default values (RDS env vars from Docker container)
 ENV=""
+CUSTOM_DB=""
 
 # Show help
 show_help() {
     cat <<EOF
 Usage: $0 --env <dev|stg|prod> [OPTIONS]
 
-RDS List All Schemas and Tables Script - Display schemas and tables in RDS database
+RDS List All Tables Script - Display all tables in each schema of RDS database
 
 Required Arguments:
   --env <dev|stg|prod>          Target RDS environment (dev, stg, or prod)
 
 Optional Arguments:
-  --help                         Show this help message
+  --db <database>               Specific database to list tables from
+  --help                        Show this help message
 
 Examples:
-  # List all schemas and tables in dev RDS
+  # List all tables in dev RDS (default database)
   $0 --env dev
 
-  # List all schemas and tables in staging RDS
-  $0 --env stg
+  # List all tables in specific database
+  $0 --env dev --db agents_dev
 
-  # List all schemas and tables in production RDS
-  $0 --env prod
+  # List all tables in staging RDS
+  $0 --env stg
 
 Output:
   Displays all schemas with their associated tables
@@ -49,6 +41,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --env)
             ENV="$2"
+            shift 2
+            ;;
+        --db)
+            CUSTOM_DB="$2"
             shift 2
             ;;
         --help)
@@ -110,23 +106,25 @@ fi
 
 # Build RDS connection string and execute query
 export PGPASSWORD="$PASS"
+# Use custom database if provided, otherwise use default
+DB=${CUSTOM_DB:-$DB}
 CONN_STRING="host=$HOST port=$PORT dbname=$DB user=$USER"
 
 echo "=========================================="
-echo "Listing schemas and tables in $ENV RDS"
+echo "Listing all tables in $ENV RDS - Database: $DB"
 echo "=========================================="
 echo ""
 
-# List schemas and their tables
+# List all tables grouped by schema
 psql "$CONN_STRING" -c "
 SELECT
-    schema_name,
-    tablename as table_name
+    schemaname as \"Schema\",
+    tablename as \"Table Name\",
+    tableowner as \"Owner\"
 FROM
-    information_schema.schemata
-    LEFT JOIN pg_tables ON pg_tables.schemaname = schema_name
+    pg_tables
 WHERE
-    schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_internal')
+    schemaname NOT IN ('pg_catalog', 'information_schema', 'pg_internal')
 ORDER BY
-    schema_name, table_name;
+    schemaname, tablename;
 "

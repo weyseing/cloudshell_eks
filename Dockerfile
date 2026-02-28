@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     git \
     jq \
+    postgresql-client \
     && pip3 install awscli aws-mfa pyotp --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 

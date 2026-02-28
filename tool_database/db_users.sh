@@ -1,33 +1,38 @@
 #!/bin/bash
-# RDS List All Databases Script
+# RDS List Users and Permissions Script
 
 set -e
 
 # Default values (RDS env vars from Docker container)
 ENV=""
+CUSTOM_DB=""
 
 # Show help
 show_help() {
     cat <<EOF
 Usage: $0 --env <dev|stg|prod> [OPTIONS]
 
-RDS List All Databases Script - Display all databases in RDS
+RDS List Users and Permissions Script - Display all users and their roles/permissions
 
 Required Arguments:
   --env <dev|stg|prod>          Target RDS environment (dev, stg, or prod)
 
 Optional Arguments:
-  --help                         Show this help message
+  --db <database>               Specific database to check permissions
+  --help                        Show this help message
 
 Examples:
-  # List all databases in dev RDS
+  # List all users in dev RDS
   $0 --env dev
 
-  # List all databases in staging RDS
+  # List users and their database-specific permissions
+  $0 --env dev --db agents_dev
+
+  # List users in staging RDS
   $0 --env stg
 
-  # List all databases in production RDS
-  $0 --env prod
+Output:
+  Displays all database users, roles, and their permissions
 EOF
 }
 
@@ -36,6 +41,10 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --env)
             ENV="$2"
+            shift 2
+            ;;
+        --db)
+            CUSTOM_DB="$2"
             shift 2
             ;;
         --help)
@@ -95,23 +104,57 @@ if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$PASS" ]; then
     exit 1
 fi
 
-# Build RDS connection string and execute query
+# Build RDS connection string
 export PGPASSWORD="$PASS"
-CONN_STRING="host=$HOST port=$PORT dbname=$DB user=$USER"
+CONN_STRING="host=$HOST port=$PORT dbname=${CUSTOM_DB:-$DB} user=$USER"
 
 echo "=========================================="
-echo "Listing all databases in $ENV RDS"
+echo "Listing users and permissions in $ENV RDS"
+if [ -n "$CUSTOM_DB" ]; then
+    echo "Database: $CUSTOM_DB"
+fi
 echo "=========================================="
 echo ""
 
+# List all database roles/users
+echo "=== All Database Users/Roles ==="
 psql "$CONN_STRING" -c "
 SELECT
-    datname as \"Name\",
-    pg_get_userbyid(datdba) as \"Owner\",
-    pg_encoding_to_char(encoding) as \"Encoding\",
-    datcollate as \"Collate\",
-    datctype as \"Ctype\",
-    datistemplate as \"Is Template\"
-FROM pg_database
-ORDER BY datname;
+    usename as \"User Name\",
+    usesuper as \"Superuser\",
+    usecreatedb as \"Create DB\",
+    valuntil as \"Valid Until\"
+FROM pg_user
+ORDER BY usename;
 "
+
+echo ""
+echo "=== User Role Memberships ==="
+psql "$CONN_STRING" -c "
+SELECT
+    u.usename as \"User\",
+    r.rolname as \"Role\",
+    r.rolsuper as \"Role Superuser\",
+    r.rolinherit as \"Inherit\"
+FROM pg_user u
+LEFT JOIN pg_auth_members m ON u.usesysid = m.member
+LEFT JOIN pg_roles r ON m.roleid = r.oid
+ORDER BY u.usename, r.rolname;
+"
+
+# If specific database provided, show table-level permissions
+if [ -n "$CUSTOM_DB" ]; then
+    echo ""
+    echo "=== Table Permissions in $CUSTOM_DB ==="
+    psql "$CONN_STRING" -c "
+SELECT
+    grantee as \"User/Role\",
+    table_schema as \"Schema\",
+    table_name as \"Table\",
+    string_agg(privilege_type, ', ') as \"Permissions\"
+FROM information_schema.role_table_grants
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+GROUP BY grantee, table_schema, table_name
+ORDER BY grantee, table_schema, table_name;
+    "
+fi
