@@ -3,8 +3,8 @@ services:
     build: .
     container_name: cloudshell_eks
     volumes:
-      - .:/apps
-      - ~/development:/root/development
+      - .:/apps/cloudshell
+      - ~/development:/apps/development
       - ~/.aws:/root/.aws
       - ~/.kube:/root/.kube
       - ~/.claude:/root/.claude
