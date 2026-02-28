@@ -29,8 +29,6 @@ fi
 TIMEOUT="${TIMEOUT:-20s}"
 OUTPUT_DIR="$(dirname "$0")/../temp/logs"
 
-# aws assume role
-source "$(dirname "$0")/aws_assume_role.sh"
 
 # read namespace from temp file
 TEMP_FILE="$(dirname "$0")/../temp/namespace"

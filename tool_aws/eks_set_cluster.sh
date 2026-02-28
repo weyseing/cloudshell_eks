@@ -17,8 +17,6 @@ if [[ -z "$CLUSTER_NAME" ]]; then
   exit 1
 fi
 
-# aws assume role
-source "$(dirname "$0")/aws_assume_role.sh"
 
 # update kubeconfig — persists cluster context to ~/.kube/config
 aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_DEFAULT_REGION"

@@ -21,8 +21,6 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-# aws assume role
-source "$(dirname "$0")/aws_assume_role.sh"
 
 # read namespace from temp file
 TEMP_FILE="$(dirname "$0")/../temp/namespace"

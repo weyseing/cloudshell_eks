@@ -11,8 +11,6 @@ while [[ "$#" -gt 0 ]]; do
   shift
 done
 
-# aws assume role
-source "$(dirname "$0")/aws_assume_role.sh"
 
 # fetch namespaces from current cluster
 echo "Fetching namespaces..."

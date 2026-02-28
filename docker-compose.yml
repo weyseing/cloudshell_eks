@@ -4,6 +4,7 @@ services:
     container_name: cloudshell_eks
     volumes:
       - .:/apps
+      - ~/development:/root/development
       - ~/.aws:/root/.aws
       - ~/.kube:/root/.kube
       - ~/.claude:/root/.claude

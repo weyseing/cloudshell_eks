@@ -28,8 +28,6 @@ if [[ -z "$DEPLOYMENT" ]]; then
   exit 1
 fi
 
-# aws assume role
-source "$(dirname "$0")/aws_assume_role.sh"
 
 # read namespace from temp file
 TEMP_FILE="$(dirname "$0")/../temp/namespace"
