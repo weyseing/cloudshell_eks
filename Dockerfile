@@ -36,7 +36,7 @@ ENV PATH="/root/.local/bin:${PATH}"
 WORKDIR /apps
 
 # Set terminal color prompt
-RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[01;34m\]\w\[\033[00m\]\$"' >> /root/.bashrc
+RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[38;5;12m\]\w\[\033[00m\]\$"' >> /root/.bashrc
 
 # Copy and setup entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
