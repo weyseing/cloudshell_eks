@@ -45,9 +45,8 @@ if [[ -z "$NAMESPACE" ]]; then
   fi
 fi
 
-# save to temp file
-TEMP_FILE="$(dirname "$0")/../temp/namespace"
-mkdir -p "$(dirname "$TEMP_FILE")"
-echo "$NAMESPACE" > "$TEMP_FILE"
+# Export to environment variable for current session
+export EKS_NAMESPACE="$NAMESPACE"
 
-echo "Namespace set to: $NAMESPACE (saved to temp/namespace)"
+echo "Namespace set to: $NAMESPACE (EKS_NAMESPACE=$NAMESPACE)"
+echo "This setting is active in the current shell session only."

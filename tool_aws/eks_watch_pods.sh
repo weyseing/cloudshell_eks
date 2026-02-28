@@ -29,13 +29,12 @@ if [[ -z "$DEPLOYMENT" ]]; then
 fi
 
 
-# read namespace from temp file
-TEMP_FILE="$(dirname "$0")/../temp/namespace"
-if [[ ! -f "$TEMP_FILE" ]]; then
-  echo "Warning: namespace not set. Run eks_set_namespace.sh --namespace <namespace> first."
+# Check namespace is set
+if [[ -z "$EKS_NAMESPACE" ]]; then
+  echo "Error: EKS_NAMESPACE not set. Run: . ./eks_set_namespace.sh --namespace <namespace>"
   exit 1
 fi
-NAMESPACE=$(cat "$TEMP_FILE")
+NAMESPACE="$EKS_NAMESPACE"
 
 # set namespace temporarily, cleanup on exit
 kubectl config set-context --current --namespace="$NAMESPACE" > /dev/null 2>&1

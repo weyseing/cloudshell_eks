@@ -20,13 +20,12 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 
-# read namespace from temp file
-TEMP_FILE="$(dirname "$0")/../temp/namespace"
-if [[ ! -f "$TEMP_FILE" ]]; then
-  echo "Warning: namespace not set. Run eks_set_namespace.sh --namespace <namespace> first."
+# Check namespace is set
+if [[ -z "$EKS_NAMESPACE" ]]; then
+  echo "Error: EKS_NAMESPACE not set. Run: . ./eks_set_namespace.sh --namespace <namespace>"
   exit 1
 fi
-NAMESPACE=$(cat "$TEMP_FILE")
+NAMESPACE="$EKS_NAMESPACE"
 
 # ── single ingress: full detail ───────────────────────────────────────────────
 if [[ -n "$INGRESS" ]]; then
