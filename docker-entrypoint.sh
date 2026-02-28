@@ -36,5 +36,14 @@ else
   echo "Skipping role assumption (MFA setup not successful or required vars not set)"
 fi
 
+# GitHub authentication
+if [[ -n "$GITHUB_TOKEN" ]]; then
+  echo "Setting up GitHub authentication..."
+  echo "$GITHUB_TOKEN" | gh auth login --with-token
+  echo "GitHub authentication successful"
+else
+  echo "GITHUB_TOKEN not set, skipping GitHub authentication"
+fi
+
 # Keep container running
 tail -f /dev/null

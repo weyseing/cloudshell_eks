@@ -19,4 +19,7 @@ AWS_MFA_SECRET=     # AWS MFA secret key
 ILMUCHAT_DOMAIN=    # ilmuchat domain
 ILMUCHAT_EMAIL=     # ilmuchat email/username
 ILMUCHAT_PASSWORD=  # ilmuchat password
+
+# GitHub Config
+GITHUB_TOKEN=       # github token
 ```
