@@ -1,21 +1,63 @@
 #!/bin/bash
 set -e
 
+source "$(dirname "$0")/github_utils.sh"
+
 # Export GitHub repository secrets and environment variables to separate files
 # Splits by: environment + type (secrets/variables)
-# Usage: ./export_env_split.sh [owner/repo] [output_dir]
 
-REPO="${1:-}"
-OUTPUT_DIR="${2:-/apps/temp/github/env}"
+REPO=""
+OUTPUT_DIR="/apps/temp/github/env"
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Export GitHub repository secrets and environment variables to separate files.
+
+OPTIONS:
+  --repo OWNER/REPO      GitHub repository (required)
+  --output DIR           Output directory (default: /apps/temp/github/env)
+  --help                 Show this help message
+
+EXAMPLES:
+  $0 --repo frogasia/agent-service
+  $0 --repo frogasia/agent-service --output /tmp/github
+
+If --repo is not provided, attempts to extract from git remote origin.
+EOF
+  exit "${1:-0}"
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --repo)
+      REPO="$2"
+      shift 2
+      ;;
+    --output)
+      OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    --help)
+      usage 0
+      ;;
+    *)
+      echo "Error: Unknown option: $1"
+      usage 1
+      ;;
+  esac
+done
 
 # Extract from git remote if not provided
 if [[ -z "$REPO" ]]; then
-  REMOTE_URL=$(git remote get-url origin)
+  REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
   if [[ $REMOTE_URL =~ github.com[:/]([^/]+)/([^/]+)\.git$ ]]; then
     REPO="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
   else
-    echo "Error: Could not extract repo from git remote. Provide as argument: owner/repo"
-    exit 1
+    echo "Error: Could not extract repo from git remote. Provide with: --repo owner/repo"
+    usage 1
   fi
 fi
 
@@ -23,6 +65,9 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 REPO_NAME=$(echo "$REPO" | tr '/' '_')
+
+# Verify GitHub authentication
+check_github_auth
 
 echo "Exporting environment from: $REPO"
 echo "Output directory: $OUTPUT_DIR"
@@ -45,8 +90,8 @@ if [[ -n "$SECRETS" ]]; then
   echo "✓ $FILENAME"
 fi
 
-# Repository level Variables (no header in output, get first column only)
-VARIABLES=$(gh variable list --repo "$REPO" 2>/dev/null | awk '{print $1}' || echo "")
+# Repository level Variables (use paginated API to avoid N+1 queries)
+VARIABLES=$(gh api repos/"$REPO"/actions/variables --paginate -q '.variables[] | "\(.name)=\(.value)"' 2>/dev/null || echo "")
 if [[ -n "$VARIABLES" ]]; then
   FILENAME="${OUTPUT_DIR}/${REPO_NAME}_repo_variables.txt"
   {
@@ -54,12 +99,7 @@ if [[ -n "$VARIABLES" ]]; then
     echo "Repository: $REPO"
     echo "Exported: $(date)"
     echo ""
-    while IFS= read -r VAR; do
-      if [[ -n "$VAR" ]]; then
-        VALUE=$(gh api repos/"$REPO"/actions/variables/"$VAR" -q '.value' 2>/dev/null || echo "")
-        echo "$VAR=$VALUE"
-      fi
-    done <<< "$VARIABLES"
+    echo "$VARIABLES"
   } > "$FILENAME"
   echo "✓ $FILENAME"
 fi

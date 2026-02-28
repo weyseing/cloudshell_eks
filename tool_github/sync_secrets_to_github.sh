@@ -1,23 +1,67 @@
 #!/bin/bash
+set -e
+
+source "$(dirname "$0")/github_utils.sh"
 
 # Sync secrets from file to GitHub repository environment
 # Creates new secrets or updates existing ones
-# Usage: ./sync_secrets_to_github.sh <repo> <secrets_file> [environment_name]
 
-REPO="${1:-}"
-SECRETS_FILE="${2:-}"
-GH_ENV="${3:-}"
+REPO=""
+SECRETS_FILE=""
+GH_ENV=""
 
-# Show usage
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Sync secrets from file to GitHub repository environment.
+
+OPTIONS:
+  --repo OWNER/REPO      GitHub repository (required)
+  --file PATH            Secrets file (required)
+  --env NAME             Environment name (default: extracted from filename)
+  --help                 Show this help message
+
+EXAMPLES:
+  $0 --repo frogasia/agent-service --file /apps/temp/github/env/frogasia_agent-service_PROD_secrets.txt
+  $0 --repo frogasia/agent-service --file secrets.txt --env PROD
+
+File format: KEY=VALUE pairs (headers and empty lines skipped)
+EOF
+  exit "${1:-0}"
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --repo)
+      REPO="$2"
+      shift 2
+      ;;
+    --file)
+      SECRETS_FILE="$2"
+      shift 2
+      ;;
+    --env)
+      GH_ENV="$2"
+      shift 2
+      ;;
+    --help)
+      usage 0
+      ;;
+    *)
+      echo "Error: Unknown option: $1"
+      usage 1
+      ;;
+  esac
+done
+
+# Validate required arguments
 if [[ -z "$REPO" ]] || [[ -z "$SECRETS_FILE" ]]; then
-  echo "Usage: $0 <owner/repo> <secrets_file> [environment_name]"
-  echo ""
-  echo "Examples:"
-  echo "  $0 frogasia/agent-service /apps/temp/github/env/frogasia_agent-service_PROD_secrets.txt PROD"
-  exit 1
+  echo "Error: --repo and --file are required"
+  usage 1
 fi
 
-# Verify file exists
 if [[ ! -f "$SECRETS_FILE" ]]; then
   echo "Error: File not found: $SECRETS_FILE"
   exit 1
@@ -28,7 +72,7 @@ if [[ -z "$GH_ENV" ]]; then
   if [[ $SECRETS_FILE =~ _([A-Z]+)_secrets\.txt$ ]]; then
     GH_ENV="${BASH_REMATCH[1]}"
   else
-    echo "Error: Could not extract environment name from filename"
+    echo "Error: Could not extract environment name from filename. Provide with: --env NAME"
     exit 1
   fi
 fi
@@ -41,20 +85,11 @@ echo "Environment: $GH_ENV"
 echo "Secrets file: $SECRETS_FILE"
 echo ""
 
-# Verify gh CLI is authenticated
-if ! gh auth status > /dev/null 2>&1; then
-  echo "Error: Not authenticated with GitHub. Run: gh auth login"
-  exit 1
-fi
+# Verify GitHub authentication
+check_github_auth
 
-# Verify environment exists
-if ! gh api repos/"$REPO"/environments/"$GH_ENV" > /dev/null 2>&1; then
-  echo "Error: Environment '$GH_ENV' not found in repository"
-  exit 1
-fi
-
-# Parse secrets from file (skip headers and empty lines)
-SECRETS=$(tail -n +6 "$SECRETS_FILE" | grep '=' | grep -v '^$')
+# Parse secrets from file (skip header lines and empty lines)
+SECRETS=$(grep '=' "$SECRETS_FILE" | grep -v '^$' | head -n +99999)
 
 if [[ -z "$SECRETS" ]]; then
   echo "No secrets found in file"
@@ -65,27 +100,27 @@ SECRET_COUNT=$(echo "$SECRETS" | wc -l)
 echo "Found $SECRET_COUNT secrets to sync"
 echo ""
 
-# Get list of existing secrets
+# Get list of existing secrets and build associative array for O(1) lookup
 echo "Fetching existing secrets..."
-EXISTING_SECRETS=$(gh api repos/"$REPO"/environments/"$GH_ENV"/secrets --paginate -q '.secrets[].name' 2>/dev/null | sort)
+declare -A EXISTING_SECRETS_MAP
+while IFS= read -r SECRET_NAME; do
+  EXISTING_SECRETS_MAP["$SECRET_NAME"]=1
+done < <(gh api repos/"$REPO"/environments/"$GH_ENV"/secrets --paginate -q '.secrets[].name' 2>/dev/null)
 
-# Counter for created/updated
+# Counter for created/updated/skipped
 CREATED=0
 UPDATED=0
+SKIPPED=0
 FAILED=0
 
 echo "Syncing secrets..."
 echo ""
 
-# Sync each secret using gh secret set with --body and --env flags
+# Sync each secret using associative array for O(1) lookup
 while IFS='=' read -r KEY VALUE; do
-  # Skip empty keys
-  if [[ -z "$KEY" ]]; then
-    continue
-  fi
+  [[ -z "$KEY" ]] && continue
 
-  # Check if secret exists
-  if echo "$EXISTING_SECRETS" | grep -q "^$KEY$"; then
+  if [[ -v EXISTING_SECRETS_MAP["$KEY"] ]]; then
     ACTION="UPDATE"
   else
     ACTION="CREATE"
@@ -95,13 +130,13 @@ while IFS='=' read -r KEY VALUE; do
   if gh secret set "$KEY" --repo "$REPO" --env "$GH_ENV" --body "$VALUE" >/dev/null 2>&1; then
     echo "✓ [$ACTION] $KEY"
     if [[ "$ACTION" == "CREATE" ]]; then
-      ((CREATED++))
+      ((CREATED++)) || true
     else
-      ((UPDATED++))
+      ((UPDATED++)) || true
     fi
   else
     echo "✗ [FAILED] $KEY"
-    ((FAILED++))
+    ((FAILED++)) || true
   fi
 done <<< "$SECRETS"
 
@@ -111,8 +146,9 @@ echo "Summary"
 echo "=========================================="
 echo "Created:  $CREATED"
 echo "Updated:  $UPDATED"
+echo "Skipped:  $SKIPPED"
 echo "Failed:   $FAILED"
-echo "Total:    $(($CREATED + $UPDATED + $FAILED))"
+echo "Total:    $(($CREATED + $UPDATED + $SKIPPED + $FAILED))"
 echo ""
 
 if [[ $FAILED -gt 0 ]]; then
