@@ -22,4 +22,20 @@ ILMUCHAT_PASSWORD=  # ilmuchat password
 
 # GitHub Config
 GITHUB_TOKEN=       # github token
+
+# RDS Database Configuration
+RDS_DEV_HOST=       # Dev RDS connection
+RDS_DEV_DB=
+RDS_DEV_USER=
+RDS_DEV_PASS=
+
+RDS_STG_HOST=       # Staging RDS connection
+RDS_STG_DB=
+RDS_STG_USER=
+RDS_STG_PASS=
+
+RDS_PROD_HOST=      # Production RDS connection
+RDS_PROD_DB=
+RDS_PROD_USER=
+RDS_PROD_PASS=
 ```
