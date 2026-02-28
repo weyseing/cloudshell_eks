@@ -12,7 +12,8 @@ aws_secret_access_key = ********
 # AWS Config
 AWS_ACCOUNT_ID=     # AWS account ID
 AWS_ROLE_NAME=      # AWS IAM role
-AWS_MFA_DEVICE=     # AWS MFA device
+AWS_MFA_DEVICE=     # AWS MFA device ARN
+AWS_MFA_SECRET=     # AWS MFA secret key
 
 # ilmuchat Config
 ILMUCHAT_DOMAIN=    # ilmuchat domain

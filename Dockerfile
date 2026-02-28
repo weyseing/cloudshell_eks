@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     git \
     jq \
-    && pip3 install awscli aws-mfa --break-system-packages \
+    && pip3 install awscli aws-mfa pyotp --break-system-packages \
     && rm -rf /var/lib/apt/lists/*
 
 # Install kubectl
@@ -28,5 +28,9 @@ WORKDIR /apps
 # Set terminal color prompt
 RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[01;34m\]\w\[\033[00m\]\$"' >> /root/.bashrc
 
-# Default command to keep the container open
-CMD ["tail", "-f", "/dev/null"]
+# Copy and setup entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Use entrypoint for MFA and interactive shell
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
