@@ -1,6 +1,11 @@
 # Use a lightweight linux base
 FROM debian:bookworm-slim
 
+# Set terminal color settings
+ENV TERM=xterm-256color
+ENV COLORTERM=truecolor
+ENV CLICOLOR_FORCE=1
+
 # Install dependencies and AWS CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
