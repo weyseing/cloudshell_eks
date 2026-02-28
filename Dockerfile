@@ -33,7 +33,7 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Set the working directory for your scripts
-WORKDIR /apps
+WORKDIR /apps/cloudshell
 
 # Set terminal color prompt
 RUN echo 'export PS1="\[\033[01;32m\]\u@\h:\[\033[38;5;12m\]\w\[\033[00m\]\$"' >> /root/.bashrc
